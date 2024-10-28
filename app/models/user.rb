@@ -8,4 +8,5 @@ class User < ApplicationRecord
          :jwt_authenticatable, jwt_revocation_strategy: self
 
   validates :password_confirmation, presence: true, on: %i[create update]
+  has_many :gps_devices, dependent: :destroy
 end
