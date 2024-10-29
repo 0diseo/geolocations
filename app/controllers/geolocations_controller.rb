@@ -9,12 +9,17 @@ class GeolocationsController < ApplicationController
     @geolocations = params[:gps_device_id] ? current_user.gps_devices.find(params[:gps_device_id]).geolocations :
                       current_user.geolocations
 
-    render json: @geolocations
+    geolocations = @geolocations.map do |geolocation|
+      address = GeolocationsService.get_address_from_geolocation(geolocation.latitude, geolocation.longitude)
+      geolocation.attributes.merge(address: address)
+    end
+    render json: geolocations
   end
 
   # GET /geolocations/1
   def show
-    render json: @geolocation
+    address = GeolocationsService.get_address_from_geolocation(@geolocation.latitude, @geolocation.longitude)
+    render json: @geolocation.attributes.merge(address: address)
   end
 
   # POST /geolocations
