@@ -16,12 +16,13 @@ RSpec.describe "/gps_devices", type: :request do
   # This should return the minimal set of attributes required to create a valid
   # GpsDevice. As you add validations to GpsDevice, be sure to
   # adjust the attributes here as well.
+  let(:user){ User.new(email: "test@example.com", password: "password", name: "test_user") }
   let(:valid_attributes) {
-    skip("Add a hash of attributes valid for your model")
+    {serial_id: "device_test"}
   }
 
   let(:invalid_attributes) {
-    skip("Add a hash of attributes invalid for your model")
+    {}
   }
 
   # This should return the minimal set of values that should be in the headers
@@ -32,19 +33,28 @@ RSpec.describe "/gps_devices", type: :request do
     {}
   }
 
+  before do
+    post user_registration_url, params: { user: { name: "odi", email: "odi3@example.com", password: "secret123", password_confirmation: "secret123" } }
+    user_id = JSON.parse(response.body)["data"]["id"]
+    post new_user_session_url, params: { user: {email: "odi3@example.com", password: "secret123" }}
+    @user = User.find(user_id)
+    @token = response.headers["authorization"]
+  end
+
   describe "GET /index" do
     it "renders a successful response" do
-      GpsDevice.create! valid_attributes
-      get gps_devices_url, headers: valid_headers, as: :json
+      gps_device = GpsDevice.create! valid_attributes.merge(user: @user)
+      get gps_devices_url, headers: { authorization: @token }, as: :json
       expect(response).to be_successful
+      expect(JSON.parse(response.body)[0]).to include( { "serial_id" => gps_device.serial_id, "user_id" => @user.id } )
     end
   end
 
   describe "GET /show" do
     it "renders a successful response" do
-      gps_device = GpsDevice.create! valid_attributes
-      get gps_device_url(gps_device), as: :json
-      expect(response).to be_successful
+      gps_device = GpsDevice.create! valid_attributes.merge(user: @user)
+      get gps_device_url(gps_device), headers: { authorization: @token }, as: :json
+      expect(JSON.parse(response.body)).to include({ "serial_id" => gps_device.serial_id, "user_id" => @user.id })
     end
   end
 
@@ -53,14 +63,15 @@ RSpec.describe "/gps_devices", type: :request do
       it "creates a new GpsDevice" do
         expect {
           post gps_devices_url,
-               params: { gps_device: valid_attributes }, headers: valid_headers, as: :json
+               params: { gps_device: valid_attributes }, headers: { authorization: @token }, as: :json
         }.to change(GpsDevice, :count).by(1)
       end
 
       it "renders a JSON response with the new gps_device" do
         post gps_devices_url,
-             params: { gps_device: valid_attributes }, headers: valid_headers, as: :json
+             params: { gps_device: valid_attributes }, headers: { authorization: @token }, as: :json
         expect(response).to have_http_status(:created)
+        expect(JSON.parse(response.body)).to include({ "serial_id" => valid_attributes[:serial_id], "user_id" => @user.id })
         expect(response.content_type).to match(a_string_including("application/json"))
       end
     end
@@ -69,14 +80,14 @@ RSpec.describe "/gps_devices", type: :request do
       it "does not create a new GpsDevice" do
         expect {
           post gps_devices_url,
-               params: { gps_device: invalid_attributes }, as: :json
+               params: { gps_device: invalid_attributes }, headers: { authorization: @token }, as: :json
         }.to change(GpsDevice, :count).by(0)
       end
 
       it "renders a JSON response with errors for the new gps_device" do
         post gps_devices_url,
-             params: { gps_device: invalid_attributes }, headers: valid_headers, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
+             params: { gps_device: invalid_attributes }, headers: { authorization: @token }, as: :json
+        expect(response).to have_http_status(:bad_request)
         expect(response.content_type).to match(a_string_including("application/json"))
       end
     end
@@ -85,32 +96,22 @@ RSpec.describe "/gps_devices", type: :request do
   describe "PATCH /update" do
     context "with valid parameters" do
       let(:new_attributes) {
-        skip("Add a hash of attributes valid for your model")
+        {serial_id: "device_test2"}
       }
 
       it "updates the requested gps_device" do
-        gps_device = GpsDevice.create! valid_attributes
+        gps_device = GpsDevice.create! valid_attributes.merge(user: @user)
         patch gps_device_url(gps_device),
-              params: { gps_device: new_attributes }, headers: valid_headers, as: :json
+              params: { gps_device: new_attributes }, headers: { authorization: @token }, as: :json
         gps_device.reload
-        skip("Add assertions for updated state")
+        expect(gps_device.serial_id).to eq new_attributes[:serial_id]
       end
 
       it "renders a JSON response with the gps_device" do
-        gps_device = GpsDevice.create! valid_attributes
+        gps_device = GpsDevice.create! valid_attributes.merge(user: @user)
         patch gps_device_url(gps_device),
-              params: { gps_device: new_attributes }, headers: valid_headers, as: :json
+              params: { gps_device: new_attributes }, headers: { authorization: @token }, as: :json
         expect(response).to have_http_status(:ok)
-        expect(response.content_type).to match(a_string_including("application/json"))
-      end
-    end
-
-    context "with invalid parameters" do
-      it "renders a JSON response with errors for the gps_device" do
-        gps_device = GpsDevice.create! valid_attributes
-        patch gps_device_url(gps_device),
-              params: { gps_device: invalid_attributes }, headers: valid_headers, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
         expect(response.content_type).to match(a_string_including("application/json"))
       end
     end
@@ -118,9 +119,9 @@ RSpec.describe "/gps_devices", type: :request do
 
   describe "DELETE /destroy" do
     it "destroys the requested gps_device" do
-      gps_device = GpsDevice.create! valid_attributes
+      gps_device = GpsDevice.create! valid_attributes.merge({user: @user})
       expect {
-        delete gps_device_url(gps_device), headers: valid_headers, as: :json
+        delete gps_device_url(gps_device), headers: { authorization: @token }, as: :json
       }.to change(GpsDevice, :count).by(-1)
     end
   end

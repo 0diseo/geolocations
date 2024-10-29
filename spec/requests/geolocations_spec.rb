@@ -17,11 +17,13 @@ RSpec.describe "/geolocations", type: :request do
   # Geolocation. As you add validations to Geolocation, be sure to
   # adjust the attributes here as well.
   let(:valid_attributes) {
-    skip("Add a hash of attributes valid for your model")
+    { latitude: "32.7831",
+      longitude: "-96.8067",
+      url: "google.com",
+      ip: "142.250.114.100" }
   }
 
   let(:invalid_attributes) {
-    skip("Add a hash of attributes invalid for your model")
   }
 
   # This should return the minimal set of values that should be in the headers
@@ -32,19 +34,37 @@ RSpec.describe "/geolocations", type: :request do
     {}
   }
 
+  before do
+    post user_registration_url, params: { user: { name: "odi", email: "odi3@example.com", password: "secret123", password_confirmation: "secret123" } }
+    user_id = JSON.parse(response.body)["data"]["id"]
+    post new_user_session_url, params: { user: { email: "odi3@example.com", password: "secret123" } }
+    @user = User.find(user_id)
+    @token = response.headers["authorization"]
+  end
+
   describe "GET /index" do
     it "renders a successful response" do
-      Geolocation.create! valid_attributes
-      get geolocations_url, headers: valid_headers, as: :json
+      Geolocation.create! valid_attributes.merge(source: @user)
+      get geolocations_url, headers: { authorization: @token }, as: :json
       expect(response).to be_successful
+      expect(JSON.parse(response.body)[0]).to include( { "latitude" => "32.7831",
+                                                        "longitude"=> "-96.8067",
+                                                        "url"=> "google.com",
+                                                        "ip"=> "142.250.114.100",
+                                                        "source_type"=> "User", } )
     end
   end
 
   describe "GET /show" do
     it "renders a successful response" do
-      geolocation = Geolocation.create! valid_attributes
-      get geolocation_url(geolocation), as: :json
+      geolocation = Geolocation.create! valid_attributes.merge(source: @user)
+      get geolocation_url(geolocation), headers: { authorization: @token }, as: :json
       expect(response).to be_successful
+      expect(JSON.parse(response.body)).to include( { "latitude" => "32.7831",
+                                                        "longitude"=> "-96.8067",
+                                                        "url"=> "google.com",
+                                                        "ip"=> "142.250.114.100",
+                                                        "source_type"=> "User", } )
     end
   end
 
@@ -52,14 +72,29 @@ RSpec.describe "/geolocations", type: :request do
     context "with valid parameters" do
       it "creates a new Geolocation" do
         expect {
-          post geolocations_url,
-               params: { geolocation: valid_attributes }, headers: valid_headers, as: :json
+          post geolocations_url, headers: { authorization: @token }, as: :json
         }.to change(Geolocation, :count).by(1)
+        expect(JSON.parse(response.body)[0]).to include( { "source_type"=>"User", "source_id"=>@user.id } )
+      end
+
+      it "creates a new Geolocation with url" do
+        post geolocations_url, params: { url: "google.com" }, headers: { authorization: @token }, as: :json
+        JSON.parse(response.body).map { |geolocation|
+          expect(geolocation).to include({ "url" => "google.com",  "source_type"=>"User", "source_id"=>@user.id  })
+        }
+      end
+
+      it "creates a new Geolocation gps_device" do
+        gps_device = GpsDevice.create!({ serial_id: "device_test", user: @user })
+        expect {
+          post gps_device_geolocations_url(gps_device),params: { serial_id: gps_device.serial_id }, headers: { authorization: @token }, as: :json
+        }.to change(Geolocation, :count).by(1)
+        expect(JSON.parse(response.body)[0]).to include( { "source_type"=>"GpsDevice", "source_id" => gps_device.id } )
       end
 
       it "renders a JSON response with the new geolocation" do
         post geolocations_url,
-             params: { geolocation: valid_attributes }, headers: valid_headers, as: :json
+             params: { geolocation: valid_attributes }, headers: { authorization: @token }, as: :json
         expect(response).to have_http_status(:created)
         expect(response.content_type).to match(a_string_including("application/json"))
       end
@@ -75,7 +110,7 @@ RSpec.describe "/geolocations", type: :request do
 
       it "renders a JSON response with errors for the new geolocation" do
         post geolocations_url,
-             params: { geolocation: invalid_attributes }, headers: valid_headers, as: :json
+             params: { serial_id: 2684}, headers: { authorization: @token }, as: :json
         expect(response).to have_http_status(:unprocessable_entity)
         expect(response.content_type).to match(a_string_including("application/json"))
       end
@@ -85,32 +120,22 @@ RSpec.describe "/geolocations", type: :request do
   describe "PATCH /update" do
     context "with valid parameters" do
       let(:new_attributes) {
-        skip("Add a hash of attributes valid for your model")
+        { url: "github.com" }
       }
 
       it "updates the requested geolocation" do
-        geolocation = Geolocation.create! valid_attributes
+        geolocation = Geolocation.create! valid_attributes.merge(source: @user)
         patch geolocation_url(geolocation),
-              params: { geolocation: new_attributes }, headers: valid_headers, as: :json
+              params: { geolocation: new_attributes }, headers: { authorization: @token }, as: :json
         geolocation.reload
-        skip("Add assertions for updated state")
+        expect(geolocation.url).to eq("github.com")
       end
 
       it "renders a JSON response with the geolocation" do
-        geolocation = Geolocation.create! valid_attributes
+        geolocation = Geolocation.create! valid_attributes.merge(source: @user)
         patch geolocation_url(geolocation),
-              params: { geolocation: new_attributes }, headers: valid_headers, as: :json
+              params: { geolocation: new_attributes }, headers: { authorization: @token }, as: :json
         expect(response).to have_http_status(:ok)
-        expect(response.content_type).to match(a_string_including("application/json"))
-      end
-    end
-
-    context "with invalid parameters" do
-      it "renders a JSON response with errors for the geolocation" do
-        geolocation = Geolocation.create! valid_attributes
-        patch geolocation_url(geolocation),
-              params: { geolocation: invalid_attributes }, headers: valid_headers, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
         expect(response.content_type).to match(a_string_including("application/json"))
       end
     end
@@ -118,9 +143,9 @@ RSpec.describe "/geolocations", type: :request do
 
   describe "DELETE /destroy" do
     it "destroys the requested geolocation" do
-      geolocation = Geolocation.create! valid_attributes
+      geolocation = Geolocation.create! valid_attributes.merge(source: @user)
       expect {
-        delete geolocation_url(geolocation), headers: valid_headers, as: :json
+        delete geolocation_url(geolocation), headers: { authorization: @token }, as: :json
       }.to change(Geolocation, :count).by(-1)
     end
   end

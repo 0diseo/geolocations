@@ -1,8 +1,9 @@
 require_relative "../services/geolocations"
 
 class GeolocationsController < ApplicationController
-  before_action :set_geolocation, only: %i[ show update destroy ]
   before_action :authenticate_user!, except: %I[ create ]
+  before_action :set_geolocation, only: %i[ show update destroy ]
+
 
   # GET /geolocations
   def index
@@ -24,13 +25,13 @@ class GeolocationsController < ApplicationController
 
   # POST /geolocations
   def create
-    @geolocations = geolocation_params.map{ |params| Geolocation.new(params) }
+    @geolocations = geolocation_generate_params.map{ |params| Geolocation.new(params) }
 
     if @geolocations.all?{ |geolocation| geolocation.valid? }
       @geolocations.each(&:save)
       render json: @geolocations, status: :created, location: @geolocation
     else
-      render json: @geolocations.filter{ |geo| !geo.valid }.map{ |geo| geo.errors }, status: :unprocessable_entity
+      render json: @geolocations.select{ |geo| !geo.valid? }.map{ |geo| geo.errors }, status: :unprocessable_entity
     end
   end
 
@@ -52,11 +53,15 @@ class GeolocationsController < ApplicationController
     # Use callbacks to share common setup or constraints between actions.
     def set_geolocation
       @geolocation = params[:gps_device_id] ?
-                       current_user.geolocations.find(params[:gps_device_id]).geolocations.find(params[:id]) :
+                       current_user.gps_devices.find(params[:gps_device_id]).geolocations.find(params[:id]) :
                        current_user.geolocations.find(params[:id])
     end
 
     def geolocation_params
+      params.require(:geolocation).permit(:latitude, :longitude, :url, :ip)
+    end
+
+    def geolocation_generate_params
       permit_params =  params.permit(:url, :serial_id)
       source = permit_params[:serial_id] ? GpsDevice.find_by(serial_id: permit_params[:serial_id]) : current_user
       url_ips = GeolocationsService.get_ip_from_url(permit_params[:url])
