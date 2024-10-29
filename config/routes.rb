@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :geolocations
   resources :gps_devices
   devise_for :users, path: '', path_names: {
     sign_in: 'login',
@@ -15,6 +16,10 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
   get "self", to: "person#self_user"
+
+  resources :gps_devices do
+    resources :geolocations
+  end
 
   # Defines the root path route ("/")
   # root "posts#index"

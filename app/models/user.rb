@@ -9,4 +9,5 @@ class User < ApplicationRecord
 
   validates :password_confirmation, presence: true, on: %i[create update]
   has_many :gps_devices, dependent: :destroy
+  has_many :geolocations, as: :source
 end
