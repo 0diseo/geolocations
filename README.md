@@ -132,7 +132,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJlMjM5ZGU5My1mNzVjLT
 }
 ```
 
-## show all user's Gps_devices
+## show all Gps_devices
 
 show all gps_devices created by a user
 
@@ -173,7 +173,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJlMjM5ZGU5My1mNzVjLT
 ]
 ```
 
-## show a user's gps_devices
+## show a gps_devices
 
 show a gps_devices created by the user
 
@@ -205,7 +205,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJlMjM5ZGU5My1mNzVjLT
 
 ```
 
-## update a user's gps_devices
+## update gps_devices
 
 update gps_devices created by the user
 
@@ -364,8 +364,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJlMjM5ZGU5My1mNzVjLT
   "url": "google.com"
 }
 ```
-**url:** string optional value, if the url value is gived the aplication get the ip from the url and generate locations 
-for the diferentes ips, if the url is not give the location ip come from requester
+**url:** string optional value, if the url value is given the application get the ip from the url and generate locations 
+for the different ips, if the url is not give the location ip come from requester
 
 ### Successful Response
 
